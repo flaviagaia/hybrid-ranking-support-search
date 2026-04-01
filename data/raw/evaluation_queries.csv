@@ -1,0 +1,5 @@
+query_id,query_text,relevant_doc_id
+Q-1001,customer asked for refund of duplicated payment,DOC-1001
+Q-1002,portal password reset and mfa recovery,DOC-1002
+Q-1003,ocr invoice error needs finance review,DOC-1003
+Q-1004,chargeback documentation and dispute response,DOC-1005

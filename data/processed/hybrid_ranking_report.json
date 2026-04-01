@@ -1,0 +1,8 @@
+{
+  "dataset_source": "support_search_hybrid_ranking_sample",
+  "document_count": 6,
+  "query_count": 4,
+  "hit_rate_at_1": 1.0,
+  "result_artifact": "/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_results.csv",
+  "report_artifact": "/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_report.json"
+}
