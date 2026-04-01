@@ -2,40 +2,52 @@
 
 ## Português
 
-`hybrid-ranking-support-search` é um projeto de busca para suporte que demonstra uma estratégia de **ranking híbrido**: em vez de ordenar documentos com um único critério, o pipeline combina sinais lexicais, sinais semânticos e sinais de negócio em um score final único.
+`hybrid-ranking-support-search` é um projeto de busca para bases de suporte que demonstra como **estratégias de ranking híbrido** podem melhorar a ordenação dos resultados. Em vez de depender de um único score, o pipeline combina sinais textuais e sinais operacionais para decidir qual documento deve aparecer primeiro.
 
 ### Storytelling técnico
 
-Em bases de suporte, a pergunta do usuário quase nunca chega “perfeita”. Às vezes ela reutiliza exatamente os termos do artigo certo; em outras, descreve o mesmo problema com outras palavras. Mesmo quando dois documentos parecem semanticamente parecidos, ainda faz diferença saber se aquele conteúdo é mais confiável, mais clicado ou mais prioritário para operação.
+Em ambientes de suporte, a pergunta do usuário quase nunca chega igual ao texto do artigo correto. Um colaborador pode escrever “duplicated payment refund”, enquanto a base interna foi escrita como “billing refund workflow”. Em outro cenário, dois artigos podem ser semanticamente parecidos, mas um deles é mais confiável, mais usado ou mais importante para a operação.
 
-É por isso que sistemas reais de retrieval raramente dependem de um único ranking. O desenho mais robusto costuma misturar:
+É justamente aí que entra o ranking híbrido. A ideia é simples:
 
-- **ranking lexical** para correspondência exata ou quase exata;
-- **ranking semântico** para capturar paráfrases e similaridade de intenção;
-- **sinais de negócio** para refletir qualidade operacional da base.
+- usar um **sinal lexical** para capturar correspondência textual;
+- usar um **sinal semântico** para ampliar cobertura;
+- usar **sinais de negócio** para ordenar melhor o que já parece relevante.
 
-Este projeto implementa exatamente essa lógica em um benchmark pequeno e reproduzível.
+O valor deste projeto está em mostrar essa arquitetura de forma pequena, reproduzível e fácil de evoluir.
 
-### O que é ranking híbrido
+### O que o projeto faz
 
-Ranking híbrido é a estratégia de combinar múltiplos sinais de relevância para produzir uma ordenação final mais útil. Neste projeto:
+O pipeline:
 
-- **lexical score** mede proximidade textual entre consulta e documento;
-- **semantic score** representa um canal semântico simplificado no fallback local;
-- **business score** incorpora qualidade editorial, popularidade e prioridade operacional.
+1. gera uma base sintética de documentos de suporte;
+2. gera um conjunto de queries com documento relevante conhecido;
+3. calcula múltiplos scores por documento;
+4. faz a fusão desses sinais em um `hybrid_score`;
+5. ordena os documentos;
+6. mede se o documento correto ficou no topo com `Hit Rate@1`.
 
-No runtime atual, os canais lexical e semântico usam a mesma base `TF-IDF + cosine similarity`, de forma deliberadamente honesta e reproduzível. Isso deixa o projeto executável sem dependências externas e, ao mesmo tempo, preparado para evoluir para embeddings densos reais.
+### Por que usar ranking híbrido
+
+Um mecanismo de busca baseado só em palavras exatas costuma falhar quando há:
+
+- paráfrase;
+- vocabulário diferente entre usuário e base;
+- múltiplos documentos com conteúdo parecido;
+- necessidade de priorizar conteúdo mais confiável.
+
+Já um mecanismo puramente semântico pode recuperar itens amplamente relacionados, mas nem sempre priorizar o artigo operacionalmente mais útil. O ranking híbrido existe para equilibrar esses mundos.
 
 ### Arquitetura do projeto
 
-- [src/sample_data.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/src/sample_data.py)
-  Gera o corpus de documentos e as consultas de avaliação.
-- [src/modeling.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/src/modeling.py)
-  Calcula os scores, faz a fusão híbrida e mede `hit_rate_at_1`.
-- [main.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/main.py)
-  Executa o pipeline ponta a ponta.
-- [tests/test_project.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/tests/test_project.py)
-  Garante o contrato mínimo do benchmark.
+- [src/sample_data.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/src/sample_data.py)  
+  Gera o dataset bruto de documentos e queries de avaliação.
+- [src/modeling.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/src/modeling.py)  
+  Calcula os scores, normaliza os sinais, faz a fusão híbrida e mede a qualidade do topo do ranking.
+- [main.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/main.py)  
+  Executa o pipeline ponta a ponta e produz o relatório final.
+- [tests/test_project.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/tests/test_project.py)  
+  Verifica o contrato mínimo do benchmark.
 
 ### Pipeline
 
@@ -50,20 +62,81 @@ flowchart LR
     E --> F["Top-k evaluation"]
 ```
 
-### Estratégia de modelagem
+### Base de dados usada
 
-O pipeline executa os seguintes passos:
+O projeto usa um dataset sintético pequeno, mas legível e auditável.
 
-1. carrega o corpus de documentos de suporte e o conjunto de queries avaliadas;
-2. constrói uma representação vetorial com `TfidfVectorizer(ngram_range=(1, 2))`;
-3. calcula similaridade por cosseno entre query e documentos;
-4. normaliza cada canal de score para a faixa `[0, 1]`;
-5. combina os sinais em um score final ponderado;
-6. ordena os documentos e mede o acerto do topo do ranking.
+Os documentos são gravados em:
 
-### Fórmula do score híbrido
+- [support_documents.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/raw/support_documents.csv)
 
-O score final usado no benchmark é:
+As queries de benchmark são gravadas em:
+
+- [evaluation_queries.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/raw/evaluation_queries.csv)
+
+#### Estrutura dos documentos
+
+Cada documento tem:
+
+- `doc_id`: identificador único do artigo;
+- `title`: título resumido do conteúdo;
+- `content`: texto principal usado no ranking textual;
+- `quality_score`: score editorial que representa confiança/qualidade do artigo;
+- `click_score`: proxy de uso histórico ou popularidade;
+- `priority_flag`: sinal binário para documentos operacionalmente prioritários.
+
+#### Estrutura das queries
+
+Cada query tem:
+
+- `query_id`: identificador da consulta;
+- `query_text`: texto digitado pelo usuário;
+- `relevant_doc_id`: artigo considerado correto para aquela consulta.
+
+### Técnicas utilizadas
+
+#### 1. TF-IDF
+
+O projeto usa `TfidfVectorizer(ngram_range=(1, 2))`.
+
+O que isso faz:
+
+- transforma texto em vetor numérico;
+- pondera termos mais informativos;
+- considera unigramas e bigramas, o que ajuda a capturar combinações como `password reset` ou `duplicated payment`.
+
+Por que foi escolhido:
+
+- é rápido;
+- interpretável;
+- ótimo para baseline de retrieval lexical.
+
+#### 2. Cosine Similarity
+
+Depois de transformar query e documentos em vetores, o pipeline usa `cosine_similarity`.
+
+O que isso faz:
+
+- mede o quão próximos dois vetores estão;
+- retorna um score de similaridade entre consulta e documento;
+- funciona muito bem em retrieval esparso com TF-IDF.
+
+#### 3. Normalização de scores
+
+Os diferentes sinais do pipeline têm escalas diferentes:
+
+- similaridade textual varia de um jeito;
+- `quality_score` está em outra escala;
+- `click_score` tem magnitude muito maior;
+- `priority_flag` é binário.
+
+Por isso, o projeto usa uma etapa de normalização para levar todos os sinais à faixa `[0, 1]` antes da fusão.
+
+Sem isso, um único canal poderia dominar o ranking apenas por causa da escala numérica, e não por relevância real.
+
+#### 4. Fusão de sinais
+
+O score final do projeto é:
 
 ```text
 hybrid_score =
@@ -74,32 +147,82 @@ hybrid_score =
   0.05 * priority_component
 ```
 
-Essa composição foi escolhida para refletir a lógica mais comum em sistemas operacionais de busca:
+O papel de cada componente:
 
-- a relevância textual continua sendo o principal sinal;
-- a camada semântica reforça cobertura;
-- os sinais de negócio atuam como desempate e calibragem.
+- `lexical_component`
+  mede correspondência direta entre os termos da query e os do documento.
+- `semantic_component`
+  representa um segundo canal de relevância. No fallback atual, ele usa a mesma base vetorial do lexical, mas serve como ponto de extensão para embeddings densos.
+- `quality_component`
+  favorece documentos mais bem mantidos ou mais confiáveis.
+- `click_component`
+  favorece conteúdos com maior uso histórico.
+- `priority_component`
+  adiciona uma preferência leve por documentos críticos para a operação.
 
-### Termos técnicos
+### O que cada score faz na prática
 
-- **TF-IDF**: representação vetorial esparsa que pondera termos frequentes no documento, mas menos frequentes no corpus total.
-- **Cosine similarity**: medida angular de proximidade entre vetores; muito usada em retrieval.
-- **Hit Rate@1**: fração de consultas em que o documento relevante aparece na primeira posição do ranking.
-- **Signal fusion**: combinação explícita de diferentes scores em uma única função de ordenação.
-- **Business signal**: qualquer atributo não textual que ajude a ordenar melhor o resultado, como qualidade, clique ou prioridade.
+#### Lexical score
 
-### Dataset
+É o principal score do projeto. Ele ajuda quando a pergunta do usuário compartilha palavras ou expressões com o documento correto.
 
-O benchmark usa uma base sintética pequena e interpretável:
+Exemplo:
 
-- `6` documentos de suporte;
-- `4` consultas de avaliação;
-- documento relevante anotado por consulta.
+- query: `chargeback documentation and dispute response`
+- documento: `Chargeback dispute policy`
 
-Arquivos gerados:
+#### Semantic score
 
-- [support_documents.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/raw/support_documents.csv)
-- [evaluation_queries.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/raw/evaluation_queries.csv)
+No runtime atual, ele ainda é um **canal semântico simplificado**, usando a mesma matriz `TF-IDF` do sinal lexical. Ele está presente porque a arquitetura foi desenhada para evoluir naturalmente para embeddings.
+
+Na prática, esse campo já representa onde entraria um modelo semântico real, como:
+
+- embeddings densos;
+- sentence transformers;
+- vetores gerados por APIs de embedding.
+
+#### Business score
+
+No código, a camada de negócio é derivada principalmente de:
+
+- `quality_score`
+- `click_score`
+- `priority_flag`
+
+Isso permite que o ranking reflita não só “parece parecido”, mas também:
+
+- “é um documento bom?”;
+- “é um documento usado de fato?”;
+- “é um documento importante para operação?”.
+
+### Estratégia de modelagem implementada
+
+O pipeline executa os seguintes passos:
+
+1. lê o corpus e as queries;
+2. monta o corpus textual com `title + content`;
+3. cria a matriz vetorial `TF-IDF`;
+4. calcula `lexical_scores` e `semantic_scores`;
+5. lê os sinais de negócio do dataset;
+6. normaliza todos os canais com `_normalize`;
+7. combina os componentes em `final_scores`;
+8. ordena os documentos por `hybrid_score`;
+9. salva o melhor documento por query;
+10. mede `hit_rate_at_1`.
+
+### Métrica de avaliação
+
+A métrica principal do projeto é `Hit Rate@1`.
+
+O que ela responde:
+
+- para cada query, o documento correto ficou em primeiro lugar?
+
+Por que ela é importante:
+
+- em busca de suporte, o topo do ranking costuma ser a parte mais crítica;
+- o usuário normalmente só analisa os primeiros resultados;
+- portanto, medir o acerto da primeira posição faz muito sentido.
 
 ### Resultados atuais
 
@@ -108,68 +231,62 @@ Arquivos gerados:
 - `query_count = 4`
 - `hit_rate_at_1 = 1.0`
 
-Artefatos:
+### Como interpretar esse resultado
 
-- [hybrid_ranking_results.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_results.csv)
-- [hybrid_ranking_report.json](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_report.json)
+O `hit_rate_at_1 = 1.0` mostra que, no benchmark atual, o pipeline conseguiu colocar o documento correto na primeira posição em todas as queries avaliadas.
 
-### Interpretação dos resultados
+Esse número deve ser lido com honestidade:
 
-O `hit_rate_at_1 = 1.0` mostra que, no conjunto atual, o pipeline conseguiu colocar o documento relevante na primeira posição em todas as consultas avaliadas. Como o corpus é pequeno e sintético, esse número deve ser lido como uma validação estrutural da estratégia de ranking, não como medida de produção.
+- ele valida muito bem a estrutura do pipeline;
+- mas ainda não representa um cenário de produção;
+- porque a base é pequena, sintética e pouco ruidosa.
 
-### Como evoluir
+### Artefatos gerados
 
-Os próximos passos naturais seriam:
+- [hybrid_ranking_results.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_results.csv)  
+  Mostra o melhor documento recuperado por query.
+- [hybrid_ranking_report.json](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_report.json)  
+  Resume o resultado consolidado do benchmark.
 
-- substituir o canal semântico por embeddings reais;
+### Limitações atuais
+
+- o canal semântico ainda não usa embeddings reais;
+- o corpus é pequeno e sintético;
+- o benchmark mede só o topo do ranking;
+- ainda não há reranking supervisionado.
+
+### Evoluções naturais
+
+Os próximos passos mais valiosos seriam:
+
 - adicionar `BM25` como canal lexical explícito;
+- substituir `semantic_component` por embeddings densos reais;
 - testar `Reciprocal Rank Fusion`;
-- introduzir um reranker supervisionado;
-- ampliar o benchmark com mais queries e ruído semântico.
+- incluir `MRR` e `NDCG`;
+- adicionar mais queries e ruído linguístico;
+- introduzir reranking supervisionado.
 
 ## English
 
-`hybrid-ranking-support-search` is a support search project that demonstrates a **hybrid ranking** strategy: instead of ordering documents with a single criterion, the pipeline combines lexical, semantic, and business signals into one final score.
+`hybrid-ranking-support-search` is a support search project that demonstrates how **hybrid ranking strategies** can improve retrieval quality by combining text-based and business-based signals into a single final score.
 
 ### Technical Storytelling
 
-In support search, user questions rarely arrive in a clean and perfectly aligned way. Sometimes they reuse the exact vocabulary of the best article; sometimes they describe the same issue with different wording. Even when two documents are semantically related, operational signals such as content quality, usage frequency, and business priority still matter.
+In support systems, user questions rarely match the internal article wording perfectly. A user may write `duplicated payment refund` while the internal article is titled `billing refund workflow`. In other cases, multiple documents may look semantically related, but one is more trustworthy, more frequently used, or more operationally important.
 
-That is why production retrieval systems rarely rely on a single ranking signal. The most robust setups usually combine:
+That is why production retrieval systems usually do not rely on a single ranking signal. This project shows a compact version of that architecture by combining:
 
-- **lexical ranking** for exact or near-exact term matching;
-- **semantic ranking** for paraphrase and intent similarity;
-- **business signals** to reflect operational usefulness.
+- lexical relevance;
+- semantic-style relevance;
+- business signals.
 
-This project implements that logic in a compact and reproducible benchmark.
+### Techniques Used
 
-### What Hybrid Ranking Means
-
-Hybrid ranking is the strategy of combining multiple relevance signals to produce a better final ordering. In this project:
-
-- **lexical score** measures textual proximity between query and document;
-- **semantic score** represents a simplified semantic channel in the local fallback;
-- **business score** adds editorial quality, popularity, and operational priority.
-
-In the current runtime, both lexical and semantic channels are implemented with the same `TF-IDF + cosine similarity` stack on purpose. This keeps the project deterministic and executable while remaining easy to upgrade to dense embeddings later.
-
-### Project Structure
-
-- [src/sample_data.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/src/sample_data.py)
-- [src/modeling.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/src/modeling.py)
-- [main.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/main.py)
-- [tests/test_project.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/tests/test_project.py)
-
-### Scoring Formula
-
-```text
-hybrid_score =
-  0.40 * lexical_component +
-  0.30 * semantic_component +
-  0.15 * quality_component +
-  0.10 * click_component +
-  0.05 * priority_component
-```
+- `TF-IDF` for sparse lexical representation;
+- `cosine similarity` for query-document proximity;
+- score normalization into `[0, 1]`;
+- weighted signal fusion for the final ranking;
+- `Hit Rate@1` as the primary evaluation metric.
 
 ### Current Results
 
@@ -178,7 +295,7 @@ hybrid_score =
 - `query_count = 4`
 - `hit_rate_at_1 = 1.0`
 
-Artifacts:
+### Artifacts
 
 - [hybrid_ranking_results.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_results.csv)
 - [hybrid_ranking_report.json](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_report.json)
