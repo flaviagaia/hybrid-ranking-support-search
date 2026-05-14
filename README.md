@@ -4,17 +4,6 @@
 
 `hybrid-ranking-support-search` é um projeto de busca para bases de suporte que demonstra como **estratégias de ranking híbrido** podem melhorar a ordenação dos resultados. Em vez de depender de um único score, o pipeline combina sinais textuais e sinais operacionais para decidir qual documento deve aparecer primeiro.
 
-### Storytelling técnico
-
-Em ambientes de suporte, a pergunta do usuário quase nunca chega igual ao texto do artigo correto. Um colaborador pode escrever “duplicated payment refund”, enquanto a base interna foi escrita como “billing refund workflow”. Em outro cenário, dois artigos podem ser semanticamente parecidos, mas um deles é mais confiável, mais usado ou mais importante para a operação.
-
-É justamente aí que entra o ranking híbrido. A ideia é simples:
-
-- usar um **sinal lexical** para capturar correspondência textual;
-- usar um **sinal semântico** para ampliar cobertura;
-- usar **sinais de negócio** para ordenar melhor o que já parece relevante.
-
-O valor deste projeto está em mostrar essa arquitetura de forma pequena, reproduzível e fácil de evoluir.
 
 ### O que o projeto faz
 
@@ -40,13 +29,13 @@ Já um mecanismo puramente semântico pode recuperar itens amplamente relacionad
 
 ### Arquitetura do projeto
 
-- [src/sample_data.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/src/sample_data.py)  
+- [src/sample_data.py](src/sample_data.py)  
   Gera o dataset bruto de documentos e queries de avaliação.
-- [src/modeling.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/src/modeling.py)  
+- [src/modeling.py](src/modeling.py)  
   Calcula os scores, normaliza os sinais, faz a fusão híbrida e mede a qualidade do topo do ranking.
-- [main.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/main.py)  
+- [main.py](main.py)  
   Executa o pipeline ponta a ponta e produz o relatório final.
-- [tests/test_project.py](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/tests/test_project.py)  
+- [tests/test_project.py](tests/test_project.py)  
   Verifica o contrato mínimo do benchmark.
 
 ### Pipeline
@@ -68,11 +57,11 @@ O projeto usa um dataset sintético pequeno, mas legível e auditável.
 
 Os documentos são gravados em:
 
-- [support_documents.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/raw/support_documents.csv)
+- [support_documents.csv](data/raw/support_documents.csv)
 
 As queries de benchmark são gravadas em:
 
-- [evaluation_queries.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/raw/evaluation_queries.csv)
+- [evaluation_queries.csv](data/raw/evaluation_queries.csv)
 
 #### Estrutura dos documentos
 
@@ -243,9 +232,9 @@ Esse número deve ser lido com honestidade:
 
 ### Artefatos gerados
 
-- [hybrid_ranking_results.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_results.csv)  
+- [hybrid_ranking_results.csv](data/processed/hybrid_ranking_results.csv)  
   Mostra o melhor documento recuperado por query.
-- [hybrid_ranking_report.json](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_report.json)  
+- [hybrid_ranking_report.json](data/processed/hybrid_ranking_report.json)  
   Resume o resultado consolidado do benchmark.
 
 ### Limitações atuais
@@ -270,7 +259,7 @@ Os próximos passos mais valiosos seriam:
 
 `hybrid-ranking-support-search` is a support search project that demonstrates how **hybrid ranking strategies** can improve retrieval quality by combining text-based and business-based signals into a single final score.
 
-### Technical Storytelling
+### Technical Context
 
 In support systems, user questions rarely match the internal article wording perfectly. A user may write `duplicated payment refund` while the internal article is titled `billing refund workflow`. In other cases, multiple documents may look semantically related, but one is more trustworthy, more frequently used, or more operationally important.
 
@@ -297,5 +286,5 @@ That is why production retrieval systems usually do not rely on a single ranking
 
 ### Artifacts
 
-- [hybrid_ranking_results.csv](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_results.csv)
-- [hybrid_ranking_report.json](/Users/flaviagaia/Documents/CV_FLAVIA_CODEX/hybrid-ranking-support-search/data/processed/hybrid_ranking_report.json)
+- [hybrid_ranking_results.csv](data/processed/hybrid_ranking_results.csv)
+- [hybrid_ranking_report.json](data/processed/hybrid_ranking_report.json)
